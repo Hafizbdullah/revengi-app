@@ -34,7 +34,7 @@ jobs:
           rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
           cargo install cargo-ndk
 
-      # خطوة معالجة تعليقات Rust باستخدام بايثون بشكل نظيف لتجنب خطأ التجميع
+      # تعديل كود Rust المسبب للخطأ باستخدام Python بشكل صحيح وتطبيق التعليقات القياسية //
       - name: Patch YARA-X Dex Parser Cleanly
         run: |
           python3 -c "
@@ -49,7 +49,9 @@ jobs:
               new_content = new_content.replace('# //', '//')
               with open(filepath, 'w') as f:
                   f.write(new_content)
-          print('DEX Parser patched successfully!')
+              print('DEX Parser patched successfully!')
+          else:
+              print('File not found, skipping patch.')
           "
 
       - name: Install dependencies
@@ -57,3 +59,10 @@ jobs:
 
       - name: Build Release APK
         run: flutter build apk --release --split-per-abi
+
+      # رفع ملفات APK الناتجة إلى قسم Artifacts
+      - name: Upload APK Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: RevEngi-APKs
+          path: build/app/outputs/apk/release/*.apk
