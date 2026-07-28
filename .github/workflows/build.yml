@@ -34,14 +34,23 @@ jobs:
           rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
           cargo install cargo-ndk
 
-      # خطوة معالجة تلقائية لتخطي الأسطر المسببة للخطأ في ملف parser.rs
-      - name: Patch YARA-X Dex Parser
+      # خطوة معالجة تعليقات Rust باستخدام بايثون بشكل نظيف لتجنب خطأ التجميع
+      - name: Patch YARA-X Dex Parser Cleanly
         run: |
-          FILE="android/yarax_android/yarax_patches/yara-x/lib/src/modules/dex/parser.rs"
-          if [ -f "$FILE" ]; then
-            sed -i 's/result\.set_/# result.set_/g' "$FILE" || true
-            sed -i 's/result\.set_/\/\/ result.set_/g' "$FILE" || true
-          fi
+          python3 -c "
+          import re, os
+          filepath = 'android/yarax_android/yarax_patches/yara-x/lib/src/modules/dex/parser.rs'
+          if os.path.exists(filepath):
+              with open(filepath, 'r') as f:
+                  content = f.read()
+              # تحويل أي استدعاء مسبب للمشكلة إلى تعليق Rust صحيح //
+              new_content = re.sub(r'(\s*)(result\.set_[^\n]+)', r'\1// \2', content)
+              # تنظيف أي رموز # زائدة تمت إضافتها سابقاً
+              new_content = new_content.replace('# //', '//')
+              with open(filepath, 'w') as f:
+                  f.write(new_content)
+          print('DEX Parser patched successfully!')
+          "
 
       - name: Install dependencies
         run: flutter pub get
