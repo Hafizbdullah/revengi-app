@@ -12,13 +12,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. جلب الكود والملفات الفرعية (.gitmodules)
+      # 1. جلب الكود والملفات الفرعية
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      # 2. إعداد Java 17 المتوافق مع Gradle 8.13
+      # 2. إعداد Java 17
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -32,19 +32,15 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # 4. إعطاء صلاحيات التشغيل لمحث Gradle
-      - name: Grant execute permission for gradlew
-        run: chmod +x android/gradlew
-
-      # 5. تنزيل حزم المكاتب
+      # 4. تنزيل المكتبات
       - name: Install dependencies
         run: flutter pub get
 
-      # 6. بناء الـ APK
+      # 5. بناء الـ APK مباشرة (Flutter يتعامل مع gradle تلقائياً)
       - name: Build Release APK
         run: flutter build apk --release --split-per-abi
 
-      # 7. رفع ملفات الـ APK الناتجة للتحميل
+      # 6. رفع ملفات الـ APK الناتجة للتحميل
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
