@@ -32,15 +32,21 @@ jobs:
           channel: 'stable'
           cache: true
 
-      # 4. تنزيل المكتبات
+      # 4. تثبيت Rust ومعماريات Android الخاصة بـ cargo-ndk
+      - name: Install Rust and cargo-ndk
+        run: |
+          rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+          cargo install cargo-ndk
+
+      # 5. تنزيل حزم البرمجة
       - name: Install dependencies
         run: flutter pub get
 
-      # 5. بناء الـ APK مباشرة (Flutter يتعامل مع gradle تلقائياً)
+      # 6. بناء الـ APK
       - name: Build Release APK
         run: flutter build apk --release --split-per-abi
 
-      # 6. رفع ملفات الـ APK الناتجة للتحميل
+      # 7. رفع ملفات الـ APK للتحميل
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         with:
