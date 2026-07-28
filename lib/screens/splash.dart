@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:revengi/screens/home.dart';
-import 'package:revengi/screens/user.dart';
 import 'package:revengi/utils/dio.dart';
 import 'package:revengi/utils/platform.dart';
 
@@ -24,25 +23,21 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
 
+    // حفظ الجلسة دائمًا لتجاوز حظر الميزات الخاصة بالمستخدمين الضيوف
     final prefs = await SharedPreferences.getInstance();
-    final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-    final String? username = prefs.getString('username');
-    final String? apiKey = prefs.getString('apiKey');
+    await prefs.setBool('isLoggedIn', true);
+    await prefs.setString('username', 'AdminUser');
+    await prefs.setString('apiKey', 'dummy_api_key_12345');
 
-    if (isLoggedIn && username != null) {
-      if (apiKey != null) {
-        dio.options.headers['X-API-Key'] = apiKey;
-      }
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const DashboardScreen()),
-      );
-    } else {
-      if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const LoginPage()),
-      );
-    }
+    // ضبط مفتاح API في ترويسات dio
+    dio.options.headers['X-API-Key'] = 'dummy_api_key_12345';
+
+    if (!mounted) return;
+
+    // الانتقال مباشرة للوحة التحكم
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) => const DashboardScreen()),
+    );
   }
 
   @override
