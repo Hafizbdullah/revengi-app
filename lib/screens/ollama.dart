@@ -584,7 +584,7 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
       );
 
       _cloudChatStreamSub = response.data?.stream
-          .transform(utf8.decoder)
+          .map((Uint8List bytes) => utf8.decode(bytes))
           .transform(const LineSplitter())
           .listen(
         (line) {
