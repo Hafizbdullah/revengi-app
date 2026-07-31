@@ -32,11 +32,13 @@
   "availableIn": "متاح لدى",
   "batteryOptimization": "تحسين البطارية",
   "batteryOptimizationMessage": "بالنسبة إلى Android 11 وما فوق ، نحتاج إلى تعطيل تحسين البطارية لهذا التطبيق للعمل بشكل صحيح في الخلفية.",
+  "baseUrl": "عنوان URL الأساسي",
   "blutter": "أداة بلاتر",
   "blutterDesc": "تحليل بنية كود تطبيقات الفلاتر",
-  "blutterNote": "\nملف APK: سيتم معالجة الملفات داخل الملف مباشرة\n\nملف ZIP: يجب عليك التأكد بأن الملف يحوى ملف libapp.so بمعمارية 64 بت (arm64-v8a) \nإذا لم يوجد سيفسد التحليل وستضيع وقتنا عبثاً.",
+  "blutterNote": "\nملف APK: سيتم معالجة الملفات داخل الملف مباشرة\n\nملف ZIP: يجب عليك التأكد بأن الملف يحتوي على ملف libapp.so بمعمارية 64 بت (arm64-v8a) \nإذا لم يوجد سيفسد التحليل وستضيع وقتنا عبثاً.",
   "briefSummary": "نبذة مختصرة",
   "cancel": "إلغاء",
+  "checkConnectionOrSettings": "الرجاء التحقق من الاتصال أو الإعدادات",
   "chat": "المحادثة",
   "checkForUpdate": "عرض التحديثات",
   "checkingDeviceRam": "التحقق من ذاكرة الجهاز...",
@@ -49,7 +51,18 @@
     }
   },
   "cleanMeta": "مسح دليل META-INF",
+  "cloudProvider": "السحابة",
+  "cloudSettings": "إعدادات السحابة",
   "confirmPassword": "تأكيد كلمة المرور",
+  "connectionFailed": "فشل الاتصال: {error}",
+  "@connectionFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "connectionSuccessful": "تم الاتصال بنجاح!",
   "continueAsGuest": "الاستمرار كضيف",
   "copiedToClipboard": "نسخ إلى الحافظة",
   "copy": "نسخ",
@@ -63,12 +76,12 @@
   "dexRepair": "إصلاح الديكس",
   "dexRepairDesc": "تصحيح بنية ملفات. dex",
   "donate": "تبرع",
-  "downloadedModels": "تحميل محرك:",
-  "downloading": "جارى التنزيل ...",
+  "downloadedModels": "المحركات المحملة:",
+  "downloading": "جارى التنزيل...",
   "downloadModel": "تحميل محرك:",
   "email": "البريد الإلكتروني",
   "emailCond": "الرجاء إدخال عنوان Gmail صالح",
-  "enterEmail": "الرجاء إدخال البريد الإلكتروني",
+  "enterBaseUrl": "الرجاء إدخال عنوان URL الأساسي",
   "enterModelName": "أدخل اسم المحرك",
   "enterPassword": "الرجاء إدخال كلمة المرور",
   "enterUsername": "الرجاء إدخال اسم المستخدم",
@@ -84,10 +97,19 @@
       }
     }
   },
+  "failedToDeleteModel": "فشل حذف النموذج",
   "failedToExtractFiles": "فشل في استخراج الملفات من ZIP: {e}",
   "@failedToExtractFiles": {
     "placeholders": {
       "e": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToFetchModels": "فشل جلب النماذج: {error}",
+  "@failedToFetchModels": {
+    "placeholders": {
+      "error": {
         "type": "String"
       }
     }
@@ -100,6 +122,7 @@
       }
     }
   },
+  "failedToSendMessage": "فشل إرسال الرسالة",
   "featureNeedsApp": "الرجاء استخدام تطبيق سطح المكتب أو الجوال لهذه الميزة.",
   "fetchingModelInfo": "جلب معلومات النموذج...",
   "fileExists": "الملف موجود",
@@ -117,7 +140,7 @@
   "flutterAnalysisDesc": "عرض معلومات ملفات الفلاتر",
   "format": "الصيغة",
   "generate": "توليد",
-  "generating": "توليد ...",
+  "generating": "توليد...",
   "guestNotAllowed": "لا يمكن للمستخدمين الضيوف استخدام هذه الميزة",
   "iDonTLoveThisApp": "أنا لا أهتم ، سأندم",
   "iLoveThisApp": "أنا آسف، أحب هذا التطبيق",
@@ -137,11 +160,12 @@
       }
     }
   },
-  "largeModelWarning": "نموذج تحذير كبير",
+  "largeModelWarning": "تحذير: نموذج كبير",
   "lastUpdate": "آخر تحديث",
   "later": "لاحقاً",
   "launch": "تشغيل",
   "licenses": "التراخيص",
+  "localProvider": "محلي",
   "login": "تسجيل الدخول",
   "mail": "البريد",
   "manualDeleteRequired": "الرجاء حذف الملف/الدليل يدويا في {outputfile} وحاول مرة أخرى",
@@ -152,9 +176,13 @@
       }
     }
   },
+  "mayCauseIssues": "قد يسبب مشاكل أو لا يعمل على الإطلاق. هل تريد المتابعة؟",
   "merge": "دمج",
   "mergeSplitApks": "دمج التطبيق المقسم لملف واحد",
   "mergeUnsupportedOnWeb": "تقسيم دمج APK غير ممكن في إصدار الويب.",
+  "modelDeleted": "تم حذف النموذج",
+  "modelNotFound": "النموذج غير موجود",
+  "modelSizeWarning": "حجم النموذج",
   "models": "المحركات",
   "more": "المزيد",
   "mtHook": "قتل توقيع MT",
@@ -162,6 +190,7 @@
   "neverShowAgain": "لا تظهر مرة أخرى",
   "noAppsFound": "لم يتم العثور على تطبيقات",
   "noFileSelected": "لم يتم تحديد ملف",
+  "noModelsAvailable": "لا توجد نماذج متاحة",
   "notFound": "غير موجود",
   "ok": "حسنا",
   "ollama_api_url": "إعداد نقطة إتصال ollama",
@@ -174,7 +203,8 @@
     }
   },
   "openOllamaLibrary": "فتح مكتبة أولاما",
-  "overwrite": "الكتابة",
+  "or": "أو",
+  "overwrite": "الكتابة فوق",
   "owner": "المالك",
   "packageName": "مسمى الحزمة",
   "passLen": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل",
@@ -187,6 +217,7 @@
   "pressBackAgainToExit": "اضغط مرة أخرى للخروج",
   "proceed": "المتابعة",
   "profile": "حساب تعريفي",
+  "provideModelFrom": "قم بتزويد نموذج من",
   "rawData": "البيانات الخام",
   "register": "تسجيل",
   "registerInformation": "معلومات التسجيل",
@@ -209,10 +240,13 @@
   },
   "repairing": "إصلاح...",
   "reset": "إعادة ضبط",
+  "retry": "إعادة المحاولة",
   "save": "حفظ",
+  "saveSettings": "حفظ الإعدادات",
   "scheme": "مخطط",
   "searchApps": "البحث في التطبيقات...",
   "selectAModel": "أختر محركا كى تبدأ المحادثة",
+  "selectModel": "الرجاء اختيار نموذج",
   "selected": "مختار: {value}",
   "@selected": {
     "placeholders": {
@@ -239,6 +273,7 @@
       }
     }
   },
+  "settingsSaved": "تم حفظ الإعدادات بنجاح",
   "setJarPath": "تعيين مسار محرر apkitor",
   "setSystemMessage": "تعيين رسالة النظام",
   "signature": "التوقيع",
@@ -250,6 +285,7 @@
   "suggestRegister": "هل تحتاج إلى حساب؟ سجل",
   "systemApp": "تطبيق النظام",
   "systemMessage": "رسالة النظام",
+  "testConnection": "اختبار الاتصال",
   "theme": "المظهر",
   "typeMessage": "اكتب رسالتك…",
   "uninstall": "إلغاء",
@@ -266,7 +302,7 @@
   "update": "تحديث",
   "updateAvailable": "التحديث المتاح",
   "updateAvailableMessage": "يتوفر إصدار جديد من التطبيق.هل ترغب في التحديث الآن؟",
-  "uploading": "جارى الرفع ...",
+  "uploading": "جارى الرفع...",
   "upperCase": "تفخيم الحروف",
   "userApp": "تطبيق المستخدم",
   "username": "اسم المستخدم",
