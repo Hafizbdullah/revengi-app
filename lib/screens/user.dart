@@ -102,17 +102,16 @@ class _LoginPageState extends State<LoginPage> {
       try {
         final response = await dio.post(
           _isLogin ? '/login' : '/register',
-          data:
-              _isLogin
-                  ? {
-                    'username': _usernameController.text,
-                    'password': _passwordController.text,
-                  }
-                  : {
-                    'username': _usernameController.text,
-                    'email': _emailController.text,
-                    'password': _passwordController.text,
-                  },
+          data: _isLogin
+              ? {
+                  'username': _usernameController.text,
+                  'password': _passwordController.text,
+                }
+              : {
+                  'username': _usernameController.text,
+                  'email': _emailController.text,
+                  'password': _passwordController.text,
+                },
         );
 
         if (mounted) {
@@ -143,12 +142,10 @@ class _LoginPageState extends State<LoginPage> {
             if (mounted) {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(
-                  builder:
-                      (context) => DashboardScreen(
-                        wasPasswordGenerated:
-                            _wasPasswordGenerated && !_isLogin,
-                        generatedPasswordPath: filePath,
-                      ),
+                  builder: (context) => DashboardScreen(
+                    wasPasswordGenerated: _wasPasswordGenerated && !_isLogin,
+                    generatedPasswordPath: filePath,
+                  ),
                 ),
               );
             }
@@ -279,7 +276,8 @@ class _LoginPageState extends State<LoginPage> {
               ),
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return localizations.enterEmail;
+                  // Fallback safe text in case getter doesn't exist in l10n
+                  return 'Please enter your email';
                 }
                 if (!RegExp(
                   r'^[a-zA-Z0-9]+(?:\.[a-zA-Z0-9]+)*@gmail\.com$',
@@ -300,8 +298,8 @@ class _LoginPageState extends State<LoginPage> {
                 icon: Icon(
                   _obscurePassword ? Icons.visibility_off : Icons.visibility,
                 ),
-                onPressed:
-                    () => setState(() => _obscurePassword = !_obscurePassword),
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -409,10 +407,9 @@ class _LoginPageState extends State<LoginPage> {
                         style: theme.textTheme.bodyMedium,
                       ),
                       TextButton(
-                        onPressed:
-                            () => launchUrl(
-                              Uri.parse('https://revengi.in/terms'),
-                            ),
+                        onPressed: () => launchUrl(
+                          Uri.parse('https://revengi.in/terms'),
+                        ),
                         style: TextButton.styleFrom(
                           padding: EdgeInsets.zero,
                           minimumSize: Size.zero,
@@ -422,10 +419,9 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       Text(' and ', style: theme.textTheme.bodyMedium),
                       TextButton(
-                        onPressed:
-                            () => launchUrl(
-                              Uri.parse('https://revengi.in/privacy'),
-                            ),
+                        onPressed: () => launchUrl(
+                          Uri.parse('https://revengi.in/privacy'),
+                        ),
                         style: TextButton.styleFrom(
                           padding: EdgeInsets.zero,
                           minimumSize: Size.zero,
@@ -454,23 +450,22 @@ class _LoginPageState extends State<LoginPage> {
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              child:
-                  _isLoading
-                      ? SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: theme.colorScheme.onPrimary,
-                        ),
-                      )
-                      : Text(
-                        _isLogin ? localizations.login : localizations.register,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+              child: _isLoading
+                  ? SizedBox(
+                      height: 24,
+                      width: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: theme.colorScheme.onPrimary,
                       ),
+                    )
+                  : Text(
+                      _isLogin ? localizations.login : localizations.register,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
             ),
           ),
           const SizedBox(height: 16),
@@ -485,15 +480,14 @@ class _LoginPageState extends State<LoginPage> {
                 style: theme.textTheme.bodyMedium,
               ),
               TextButton(
-                onPressed:
-                    _isLoading
-                        ? null
-                        : () {
-                          setState(() {
-                            _isLogin = !_isLogin;
-                            _formKey.currentState?.reset();
-                          });
-                        },
+                onPressed: _isLoading
+                    ? null
+                    : () {
+                        setState(() {
+                          _isLogin = !_isLogin;
+                          _formKey.currentState?.reset();
+                        });
+                      },
                 child: Text(
                   _isLogin ? 'Sign up' : 'Sign in',
                   style: TextStyle(
@@ -506,23 +500,22 @@ class _LoginPageState extends State<LoginPage> {
           ),
 
           TextButton(
-            onPressed:
-                _isLoading
-                    ? null
-                    : () async {
-                      final navigator = Navigator.of(context);
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.setBool('isLoggedIn', true);
-                      await prefs.setString('username', 'guest');
+            onPressed: _isLoading
+                ? null
+                : () async {
+                    final navigator = Navigator.of(context);
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setBool('isLoggedIn', true);
+                    await prefs.setString('username', 'guest');
 
-                      if (mounted) {
-                        navigator.pushReplacement(
-                          MaterialPageRoute(
-                            builder: (context) => const DashboardScreen(),
-                          ),
-                        );
-                      }
-                    },
+                    if (mounted) {
+                      navigator.pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) => const DashboardScreen(),
+                        ),
+                      );
+                    }
+                  },
             child: Text(
               localizations.continueAsGuest,
               style: theme.textTheme.bodyMedium?.copyWith(
