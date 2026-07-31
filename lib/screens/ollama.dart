@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 import 'package:ollama_dart/ollama_dart.dart';
@@ -541,7 +543,7 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
         );
   }
 
-  void _sendCloudMessage(String text) {
+  void _sendCloudMessage(String text) async {
     final history = [
       {'role': 'system', 'content': systemMessage},
       ...messages
@@ -562,70 +564,81 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
         connectTimeout: const Duration(seconds: 10),
         receiveTimeout: const Duration(seconds: 60),
         headers: {
-          'Authorization': 'Bearer $cloudApiKey',
+          if (cloudApiKey.isNotEmpty) 'Authorization': 'Bearer $cloudApiKey',
           'Content-Type': 'application/json',
         },
       ),
     );
 
     _cloudChatStreamSub?.cancel();
-    _cloudChatStreamSub = dio
-        .postStream(
-          '/v1/chat/completions',
-          data: {
-            'model': selectedModel,
-            'messages': history,
-            'stream': true,
-          },
-        )
-        .listen(
-          (response) {
-            if (mounted) {
-              try {
-                final chunk = response.data['choices']?[0]['delta']['content'];
-                if (chunk != null && chunk.isNotEmpty) {
-                  _stopTypingAnimation();
+
+    try {
+      final response = await dio.post<ResponseBody>(
+        '/v1/chat/completions',
+        data: {
+          'model': selectedModel,
+          'messages': history,
+          'stream': true,
+        },
+        options: Options(responseType: ResponseType.stream),
+      );
+
+      _cloudChatStreamSub = response.data?.stream
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())
+          .listen(
+        (line) {
+          if (!mounted) return;
+          if (line.startsWith('data: ')) {
+            final dataStr = line.substring(6).trim();
+            if (dataStr == '[DONE]') return;
+            try {
+              final json = jsonDecode(dataStr);
+              final chunk = json['choices']?[0]?['delta']?['content'];
+              if (chunk != null && chunk.isNotEmpty) {
+                _stopTypingAnimation();
+                setState(() {
                   if (messages.isNotEmpty && !messages.last.fromUser) {
-                    setState(
-                      () => messages.last = messages.last.copyWith(
-                        text:
-                            messages.last.text == '.' ||
-                                    messages.last.text == '..' ||
-                                    messages.last.text == '...'
-                                ? chunk
-                                : messages.last.text + chunk,
-                      ),
+                    messages.last = messages.last.copyWith(
+                      text: messages.last.text == '.' ||
+                              messages.last.text == '..' ||
+                              messages.last.text == '...'
+                          ? chunk
+                          : messages.last.text + chunk,
                     );
                   } else {
-                    setState(
-                      () => messages.add(ChatMessage(text: chunk, fromUser: false)),
-                    );
+                    messages.add(ChatMessage(text: chunk, fromUser: false));
                   }
-                }
-              } catch (e) {
-                _stopTypingAnimation();
-                setState(() => chatInputEnabled = true);
+                });
               }
-            }
-          },
-          onDone: () {
-            if (mounted) {
-              _stopTypingAnimation();
-              setState(() {
-                chatInputEnabled = true;
-              });
-            }
-          },
-          onError: (err) {
-            if (mounted) {
-              _stopTypingAnimation();
-              setState(() => chatInputEnabled = true);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${AppLocalizations.of(context)!.failedToSendMessage}: $err')),
-              );
-            }
-          },
+            } catch (_) {}
+          }
+        },
+        onDone: () {
+          if (mounted) {
+            _stopTypingAnimation();
+            setState(() => chatInputEnabled = true);
+          }
+        },
+        onError: (err) {
+          if (mounted) {
+            _stopTypingAnimation();
+            setState(() => chatInputEnabled = true);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('${AppLocalizations.of(context)!.failedToSendMessage}: $err')),
+            );
+          }
+        },
+      );
+    } catch (e) {
+      if (mounted) {
+        _stopTypingAnimation();
+        setState(() => chatInputEnabled = true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${AppLocalizations.of(context)!.failedToSendMessage}: $e')),
         );
+      }
+    }
   }
 
   @override
