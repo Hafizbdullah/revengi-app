@@ -32,12 +32,14 @@
   "availableIn": "Available in",
   "batteryOptimization": "Battery Optimization",
   "batteryOptimizationMessage": "For Android 11 and above, We need to disable battery optimization for this app to work properly in the background.",
+  "baseUrl": "Base URL",
   "blutter": "Blutter",
   "blutterDesc": "Flutter binary analysis tool",
   "blutterNote": "\nAPK: The app will directly handle APK files.\n\r\nZIP: Ensure ZIP files contain only the `libapp.so` for arm64 architecture. Failure to comply may result in errors.",
   "briefSummary": "Brief Summary",
   "cancel": "Cancel",
   "chat": "Chat",
+  "checkConnectionOrSettings": "Please check your connection or settings",
   "checkForUpdate": "Check for Updates",
   "checkingDeviceRam": "Checking device RAM...",
   "chooseFile": "Choose {type}",
@@ -49,7 +51,18 @@
     }
   },
   "cleanMeta": "Clean META-INF directory",
+  "cloudProvider": "Cloud",
+  "cloudSettings": "Cloud Settings",
   "confirmPassword": "Confirm Password",
+  "connectionFailed": "Connection failed: {error}",
+  "@connectionFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "connectionSuccessful": "Connection successful!",
   "continueAsGuest": "Continue as Guest",
   "copiedToClipboard": "Copied to clipboard",
   "copy": "Copy",
@@ -64,11 +77,11 @@
   "dexRepairDesc": "Repair DEX files",
   "donate": "Donate",
   "downloadedModels": "Downloaded Models:",
-  "downloading": "Downloading...",
+  "downloading": "Downloading",
   "downloadModel": "Download a model:",
   "email": "Email",
   "emailCond": "Please enter a valid Gmail address",
-  "enterEmail": "Please enter email",
+  "enterBaseUrl": "Please enter a base URL",
   "enterModelName": "Enter a model name",
   "enterPassword": "Please enter password",
   "enterUsername": "Please enter username",
@@ -84,10 +97,19 @@
       }
     }
   },
+  "failedToDeleteModel": "Failed to delete model",
   "failedToExtractFiles": "Failed to extract files from ZIP: {e}",
   "@failedToExtractFiles": {
     "placeholders": {
       "e": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToFetchModels": "Failed to fetch models: {error}",
+  "@failedToFetchModels": {
+    "placeholders": {
+      "error": {
         "type": "String"
       }
     }
@@ -100,6 +122,7 @@
       }
     }
   },
+  "failedToSendMessage": "Failed to send message",
   "featureNeedsApp": "Please use the desktop or mobile app for this feature.",
   "fetchingModelInfo": "Fetching model info...",
   "fileExists": "File Exists",
@@ -142,6 +165,7 @@
   "later": "Later",
   "launch": "Launch",
   "licenses": "Licenses",
+  "localProvider": "Local",
   "login": "Login",
   "mail": "Mail",
   "manualDeleteRequired": "Kindly manually delete the file/directory at {outputfile} and try again",
@@ -152,9 +176,13 @@
       }
     }
   },
+  "mayCauseIssues": "This may cause issues or not run at all. Do you want to continue?",
   "merge": "Merge",
   "mergeSplitApks": "Merge Split APKs",
   "mergeUnsupportedOnWeb": "Split APK merging is not possible in the web version.",
+  "modelDeleted": "Model deleted",
+  "modelNotFound": "Model not found",
+  "modelSizeWarning": "The model size",
   "models": "Models",
   "more": "More",
   "mtHook": "MT Hook",
@@ -162,6 +190,7 @@
   "neverShowAgain": "Never show again",
   "noAppsFound": "No apps found",
   "noFileSelected": "No file selected",
+  "noModelsAvailable": "No models available",
   "notFound": "Not Found",
   "ok": "Ok",
   "ollama_api_url": "OLLAMA base URL",
@@ -174,6 +203,7 @@
     }
   },
   "openOllamaLibrary": "Open Ollama Library",
+  "or": "OR",
   "overwrite": "Overwrite",
   "owner": "Owner",
   "packageName": "Package name",
@@ -187,9 +217,11 @@
   "pressBackAgainToExit": "Press back again to exit",
   "proceed": "Proceed",
   "profile": "Profile",
+  "provideModelFrom": "Provide a model from",
   "rawData": "Raw data",
   "register": "Register",
   "registerInformation": "Register information",
+  "retry": "Retry",
   "repair": "Repair",
   "repairDexError": "Error repairing DEX file: {e}",
   "@repairDexError": {
@@ -210,9 +242,11 @@
   "repairing": "Repairing...",
   "reset": "Reset",
   "save": "Save",
+  "saveSettings": "Save Settings",
   "scheme": "Scheme",
   "searchApps": "Search apps...",
   "selectAModel": "Select a model to chat",
+  "selectModel": "Please select a model",
   "selected": "Selected: {value}",
   "@selected": {
     "placeholders": {
@@ -230,7 +264,7 @@
     }
   },
   "selectLanguage": "Select Language",
-  "selectOrDownloadModel": "Please select or download a model in the “Models” tab.",
+  "selectOrDownloadModel": "Please select or download a model in the \u201cModels\u201d tab.",
   "selectValidFile": "Please select a valid {type} file",
   "@selectValidFile": {
     "placeholders": {
@@ -239,6 +273,7 @@
       }
     }
   },
+  "settingsSaved": "Settings saved successfully",
   "setJarPath": "Set apkeditor jar path",
   "setSystemMessage": "Set System Message",
   "signature": "Signature",
@@ -250,8 +285,9 @@
   "suggestRegister": "Need an account? Register",
   "systemApp": "System App",
   "systemMessage": "System Message",
+  "testConnection": "Test Connection",
   "theme": "Theme",
-  "typeMessage": "Type your message…",
+  "typeMessage": "Type your message\u2026",
   "uninstall": "Uninstall",
   "uninstallWarning": "You were just about to uninstall the app weren't you?",
   "unknown": "Unknown",
