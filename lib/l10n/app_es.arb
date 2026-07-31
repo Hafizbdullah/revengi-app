@@ -30,6 +30,7 @@
   "arguments": "Argumentos",
   "autoRefresh": "Actualización automática",
   "availableIn": "Disponible en",
+  "baseUrl": "URL base",
   "batteryOptimization": "Optimización de la batería",
   "batteryOptimizationMessage": "Para Android 11 y versiones posteriores, necesitamos deshabilitar la optimización de batería para que esta aplicación funcione correctamente en segundo plano.",
   "blutter": "Blutter",
@@ -37,6 +38,7 @@
   "blutterNote": "\nAPK: La aplicación manejará directamente los archivos APK.\n\nZIP: Asegúrese de que los archivos ZIP contengan únicamente el archivo `libapp.so` para la arquitectura arm64. El incumplimiento puede resultar en errores.",
   "briefSummary": "Resumen breve",
   "cancel": "Cancelar",
+  "checkConnectionOrSettings": "Verifica tu conexión o configuración",
   "chat": "Chat",
   "checkForUpdate": "Buscar actualizaciones",
   "checkingDeviceRam": "Comprobando la RAM del dispositivo...",
@@ -49,7 +51,18 @@
     }
   },
   "cleanMeta": "Limpiar directorio META-INF",
+  "cloudProvider": "Nube",
+  "cloudSettings": "Configuración de la nube",
   "confirmPassword": "Confirmar contraseña",
+  "connectionFailed": "Error de conexión: {error}",
+  "@connectionFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "connectionSuccessful": "¡Conexión exitosa!",
   "continueAsGuest": "Continuar como invitado",
   "copiedToClipboard": "Copiado al portapapeles",
   "copy": "Copiar",
@@ -68,7 +81,7 @@
   "downloadModel": "Descargar un modelo:",
   "email": "E-mail",
   "emailCond": "Por favor, introduce una dirección de Gmail válida",
-  "enterEmail": "Por favor, introduce tu correo electrónico",
+  "enterBaseUrl": "Introduce la URL base",
   "enterModelName": "Introduce un nombre de modelo",
   "enterPassword": "Por favor, introduzca la contraseña",
   "enterUsername": "Por favor, introduzca su nombre de usuario",
@@ -84,10 +97,19 @@
       }
     }
   },
+  "failedToDeleteModel": "No se pudo eliminar el modelo",
   "failedToExtractFiles": "No se pudieron extraer los archivos del ZIP: {e}",
   "@failedToExtractFiles": {
     "placeholders": {
       "e": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToFetchModels": "No se pudieron obtener los modelos: {error}",
+  "@failedToFetchModels": {
+    "placeholders": {
+      "error": {
         "type": "String"
       }
     }
@@ -100,6 +122,7 @@
       }
     }
   },
+  "failedToSendMessage": "Error al enviar el mensaje",
   "featureNeedsApp": "Utilice la aplicación de escritorio o móvil para esta función.",
   "fetchingModelInfo": "Obteniendo información del modelo...",
   "fileExists": "El archivo existe",
@@ -142,6 +165,7 @@
   "later": "Luego",
   "launch": "Iniciar",
   "licenses": "Licencias",
+  "localProvider": "Local",
   "login": "Iniciar sesión",
   "mail": "Correo",
   "manualDeleteRequired": "Borra manualmente el archivo/directorio en {outputfile} y vuelve a intentarlo",
@@ -152,9 +176,13 @@
       }
     }
   },
+  "mayCauseIssues": "Esto puede causar problemas o no funcionar. ¿Quieres continuar?",
   "merge": "Fusionar",
   "mergeSplitApks": "Fusionar APK divididos",
   "mergeUnsupportedOnWeb": "La fusión de APK divididos no es posible en la versión web.",
+  "modelDeleted": "Modelo eliminado",
+  "modelNotFound": "Modelo no encontrado",
+  "modelSizeWarning": "Tamaño del modelo",
   "models": "Modelos",
   "more": "Más",
   "mtHook": "MT Hook",
@@ -162,6 +190,7 @@
   "neverShowAgain": "No volver a mostrar",
   "noAppsFound": "No hay aplicaciones",
   "noFileSelected": "Ningún archivo seleccionado",
+  "noModelsAvailable": "No hay modelos disponibles",
   "notFound": "No encontrado",
   "ok": "Ok",
   "ollama_api_url": "URL base OLLAMA",
@@ -174,6 +203,7 @@
     }
   },
   "openOllamaLibrary": "Abrir biblioteca de Ollama",
+  "or": "o",
   "overwrite": "Sobrescribir",
   "owner": "Propietario",
   "packageName": "Nombre del paquete",
@@ -187,6 +217,7 @@
   "pressBackAgainToExit": "Presione atrás otra vez para salir",
   "proceed": "Continuar",
   "profile": "Perfil",
+  "provideModelFrom": "Proporciona un modelo de",
   "rawData": "Datos sin procesar",
   "register": "Registrarse",
   "registerInformation": "Registrar información",
@@ -208,11 +239,14 @@
     }
   },
   "repairing": "Reparando...",
-  "reset": "Reset",
+  "reset": "Restablecer",
+  "retry": "Reintentar",
   "save": "Guardar",
+  "saveSettings": "Guardar configuración",
   "scheme": "Esquema",
   "searchApps": "Buscar aplicaciones...",
   "selectAModel": "Seleccione un modelo para chatear",
+  "selectModel": "Por favor, seleccione un modelo",
   "selected": "Seleccionado: {value}",
   "@selected": {
     "placeholders": {
@@ -239,6 +273,7 @@
       }
     }
   },
+  "settingsSaved": "Configuración guardada correctamente",
   "setJarPath": "Establecer ruta del jar de apkeditor",
   "setSystemMessage": "Establecer mensaje del sistema",
   "signature": "Firma",
@@ -247,9 +282,10 @@
   "smaliGrammar": "Gramática Smali",
   "status": "Estado",
   "suggestLogin": "¿Ya tienes cuenta? Iniciar sesión",
-  "suggestRegister": "¿Ya tienes cuenta? Iniciar sesión",
+  "suggestRegister": "¿Necesitas una cuenta? Regístrate",
   "systemApp": "App del sistema",
   "systemMessage": "Mensaje del sistema",
+  "testConnection": "Probar conexión",
   "theme": "Tema",
   "typeMessage": "Escribe tu mensaje…",
   "uninstall": "Desinstalar",
@@ -299,10 +335,10 @@
   "yaraxScanInstalledApp": "Escanear App",
   "yaraxScanner": "Escáner YARA-X",
   "yaraxScanning": "Escaneando...",
-  "yaraxScanResults": "Escanear resultados",
+  "yaraxScanResults": "Resultados del escaneo",
   "yaraxSelectFile": "Seleccionar archivo para escanear",
   "yaraxSelectYaracFile": "Seleccionar archivo .yarac",
   "yaraxUnsupportedOnWeb": "El escáner YARA-X no está disponible en la web.",
-  "yaraxValidate": "Validate",
-  "yaraxWriteRules": "Reglas de escritura"
+  "yaraxValidate": "Validar",
+  "yaraxWriteRules": "Escribir reglas"
 }
