@@ -8,6 +8,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:revengi/utils/platform.dart';
 
+enum AIProvider { local, cloud }
+
 class OllamaChatScreen extends StatefulWidget {
   const OllamaChatScreen({super.key});
 
@@ -20,6 +22,15 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
   late final OllamaClient client;
   TabController? _tabController;
 
+  // Provider settings
+  AIProvider currentProvider = AIProvider.local;
+  String cloudBaseUrl = 'https://api.revengi.in';
+  String cloudApiKey = '';
+  List<String> cloudModels = [];
+  bool isLoadingCloudModels = false;
+  String? cloudModelsError;
+
+  // Local Ollama settings
   List<String> localModels = [];
   String? selectedModel;
   bool pulling = false;
@@ -33,9 +44,11 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
   final List<ChatMessage> messages = [];
   final TextEditingController _inputController = TextEditingController();
   StreamSubscription<GenerateChatCompletionResponse>? _chatStreamSub;
+  StreamSubscription? _cloudChatStreamSub;
   Timer? _typingTimer;
   int _typingDotCount = 1;
 
+  // Default remote catalog for Local Ollama
   final List<String> remoteCatalog = [
     'qwen3:0.6b-q4_K_M',
     'qwen2.5-coder:1.5b',
@@ -43,18 +56,66 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
     'llama3.2:1b-instruct-q4_1',
   ];
 
+  // Default cloud models catalog
+  final List<String> defaultCloudModels = [
+    'llama3.2',
+    'qwen3',
+    'gemma3',
+    'mistral',
+    'phi3',
+  ];
+
   Map<String, String?> remoteModelSizes = {};
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
+    _loadSettings();
     _initializeClient();
     _fetchRemoteModelSizes();
   }
 
+  @override
+  void dispose() {
+    _chatStreamSub?.cancel();
+    _cloudChatStreamSub?.cancel();
+    _typingTimer?.cancel();
+    _tabController?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    final providerIndex = prefs.getInt('aiProvider') ?? 0;
+    setState(() {
+      currentProvider = AIProvider.values[providerIndex];
+      cloudBaseUrl = prefs.getString('cloudBaseUrl') ?? 'https://api.revengi.in';
+      cloudApiKey = prefs.getString('cloudApiKey') ?? '';
+      selectedModel = prefs.getString('lastSelectedModel');
+    });
+    if (currentProvider == AIProvider.cloud) {
+      await _fetchCloudModels();
+    } else {
+      _initializeClient();
+    }
+  }
+
+  Future<void> _saveSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('aiProvider', currentProvider.index);
+    await prefs.setString('cloudBaseUrl', cloudBaseUrl);
+    await prefs.setString('cloudApiKey', cloudApiKey);
+    if (selectedModel != null) {
+      await prefs.setString('lastSelectedModel', selectedModel!);
+    }
+  }
+
   Future<void> _initializeClient() async {
-    String baseUrl = await _getBaseUrl();
+    if (currentProvider == AIProvider.cloud) {
+      return;
+    }
+    String baseUrl = await _getLocalBaseUrl();
     try {
       client = OllamaClient(baseUrl: baseUrl);
       await _loadLocalModels();
@@ -74,7 +135,7 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
     }
   }
 
-  Future<String> _getBaseUrl() async {
+  Future<String> _getLocalBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('ollamaBaseUrl') ?? 'http://localhost:11434/api';
   }
@@ -131,7 +192,147 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
     return null;
   }
 
+  Future<void> _fetchCloudModels() async {
+    if (currentProvider != AIProvider.cloud) return;
+    setState(() {
+      isLoadingCloudModels = true;
+      cloudModelsError = null;
+    });
+    try {
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: cloudBaseUrl,
+          connectTimeout: const Duration(seconds: 10),
+          receiveTimeout: const Duration(seconds: 30),
+          headers: {'Authorization': 'Bearer $cloudApiKey'},
+        ),
+      );
+      final response = await dio.get('/v1/models');
+      if (response.statusCode == 200) {
+        final List<dynamic> models = response.data['data'] ?? [];
+        if (mounted) {
+          setState(() {
+            cloudModels = models
+                .map((m) => m['id']?.toString() ?? '')
+                .where((m) => m.isNotEmpty)
+                .toList();
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          cloudModels = List.from(defaultCloudModels);
+          cloudModelsError =
+              AppLocalizations.of(context)!.failedToFetchModels(e.toString());
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoadingCloudModels = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _switchProvider(AIProvider provider) async {
+    if (currentProvider == provider) return;
+    setState(() {
+      currentProvider = provider;
+      chatInputEnabled = true;
+    });
+    await _saveSettings();
+    if (provider == AIProvider.local) {
+      await _initializeClient();
+      await _loadLocalModels();
+    } else {
+      await _fetchCloudModels();
+    }
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _saveCloudSettings() async {
+    await _saveSettings();
+    await _fetchCloudModels();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.settingsSaved),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Future<void> _testCloudConnection() async {
+    if (cloudBaseUrl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.enterBaseUrl),
+        ),
+      );
+      return;
+    }
+    setState(() {
+      isLoadingCloudModels = true;
+    });
+    try {
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: cloudBaseUrl,
+          connectTimeout: const Duration(seconds: 5),
+          headers: {
+            if (cloudApiKey.isNotEmpty) 'Authorization': 'Bearer $cloudApiKey',
+          },
+        ),
+      );
+      final response = await dio.get('/v1/models');
+      if (response.statusCode == 200) {
+        await _fetchCloudModels();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppLocalizations.of(context)!.connectionSuccessful),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                AppLocalizations.of(context)!.connectionFailed(
+                  response.statusCode.toString(),
+                ),
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.connectionFailed(e.toString()),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoadingCloudModels = false;
+        });
+      }
+    }
+  }
+
   Future<void> _pullModel(String model) async {
+    if (currentProvider != AIProvider.local) return;
     final localizations = AppLocalizations.of(context)!;
     if (mounted) {
       setState(() {
@@ -157,7 +358,7 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
             if (total != null && completed != null && total! > 0) {
               pullProgress = completed! / total!;
               pullStatusText =
-                  'Downloading... ${(pullProgress * 100).toStringAsFixed(0)}%';
+                  '${AppLocalizations.of(context)!.downloading} ${(pullProgress * 100).toStringAsFixed(0)}%';
             } else {
               pullProgress = 0.0;
               pullStatusText = status.status?.toString() ?? '';
@@ -190,19 +391,19 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
   }
 
   Future<void> _deleteModel(String model) async {
-    // Umm... Yes we have DeleteModelRequest but
-    // Currently i've no idea of getting falure, so we use dio
+    if (currentProvider != AIProvider.local) return;
     final dio = Dio();
-    final url = 'http://localhost:11434/api/delete';
+    final baseUrl = await _getLocalBaseUrl();
+    final url = '$baseUrl/delete';
 
     try {
       final response = await dio.delete(url, data: {'model': model});
 
       if (response.statusCode == 200) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Model deleted: $model')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${AppLocalizations.of(context)!.modelDeleted}: $model')),
+          );
         }
         setState(() {
           localModels.remove(model);
@@ -210,14 +411,14 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
         });
       } else if (response.statusCode == 404) {
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Model not found: $model')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${AppLocalizations.of(context)!.modelNotFound}: $model')),
+          );
         }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to delete model: $model')),
+            SnackBar(content: Text('${AppLocalizations.of(context)!.failedToDeleteModel}: $model')),
           );
         }
       }
@@ -228,12 +429,14 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
     _typingDotCount = 1;
     _typingTimer?.cancel();
     _typingTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
-      setState(() {
-        _typingDotCount = _typingDotCount % 3 + 1;
-        if (messages.isNotEmpty && !messages.last.fromUser) {
-          messages.last = messages.last.copyWith(text: '.' * _typingDotCount);
-        }
-      });
+      if (mounted) {
+        setState(() {
+          _typingDotCount = _typingDotCount % 3 + 1;
+          if (messages.isNotEmpty && !messages.last.fromUser) {
+            messages.last = messages.last.copyWith(text: '.' * _typingDotCount);
+          }
+        });
+      }
     });
   }
 
@@ -253,6 +456,15 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
 
     setState(() => messages.add(ChatMessage(text: '.', fromUser: false)));
     _startTypingAnimation();
+
+    if (currentProvider == AIProvider.local) {
+      _sendLocalMessage(text);
+    } else {
+      _sendCloudMessage(text);
+    }
+  }
+
+  void _sendLocalMessage(String text) {
     final history = [
       Message(role: MessageRole.system, content: systemMessage),
       ...messages
@@ -281,60 +493,139 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
         )
         .listen(
           (res) {
-            final chunk = res.message.content;
-            if (messages.isNotEmpty && !messages.last.fromUser) {
-              _stopTypingAnimation();
-              setState(
-                () =>
-                    messages.last = messages.last.copyWith(
-                      text:
-                          messages.last.text == '.' ||
-                                  messages.last.text == '..' ||
-                                  messages.last.text == '...'
-                              ? chunk
-                              : messages.last.text + chunk,
-                    ),
-              );
-            } else {
-              _stopTypingAnimation();
-              setState(
-                () => messages.add(ChatMessage(text: chunk, fromUser: false)),
-              );
+            if (mounted) {
+              final chunk = res.message.content;
+              if (messages.isNotEmpty && !messages.last.fromUser) {
+                _stopTypingAnimation();
+                setState(
+                  () => messages.last = messages.last.copyWith(
+                    text:
+                        messages.last.text == '.' ||
+                                messages.last.text == '..' ||
+                                messages.last.text == '...'
+                            ? chunk
+                            : messages.last.text + chunk,
+                  ),
+                );
+              } else {
+                _stopTypingAnimation();
+                setState(
+                  () => messages.add(ChatMessage(text: chunk, fromUser: false)),
+                );
+              }
             }
           },
           onDone: () {
-            _stopTypingAnimation();
-            setState(() {
-              chatInputEnabled = true;
-              if (messages.isNotEmpty && !messages.last.fromUser) {
-                messages.last = messages.last.copyWith(
-                  text: messages.last.text,
-                  fromUser: false,
-                );
-                messages.last = ChatMessage(
-                  text: messages.last.text,
-                  fromUser: false,
-                );
-              }
-            });
+            if (mounted) {
+              _stopTypingAnimation();
+              setState(() {
+                chatInputEnabled = true;
+                if (messages.isNotEmpty && !messages.last.fromUser) {
+                  messages.last = messages.last.copyWith(
+                    text: messages.last.text,
+                    fromUser: false,
+                  );
+                }
+              });
+            }
           },
           onError: (err) {
-            _stopTypingAnimation();
-            setState(() => chatInputEnabled = true);
             if (mounted) {
+              _stopTypingAnimation();
+              setState(() => chatInputEnabled = true);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Failed to send message')),
+                SnackBar(content: Text('${AppLocalizations.of(context)!.failedToSendMessage}: $err')),
               );
             }
           },
         );
   }
 
-  @override
-  void dispose() {
-    _chatStreamSub?.cancel();
-    _typingTimer?.cancel();
-    super.dispose();
+  void _sendCloudMessage(String text) {
+    final history = [
+      {'role': 'system', 'content': systemMessage},
+      ...messages
+          .where(
+            (m) =>
+                !(m.text == '.' || m.text == '..' || m.text == '...') ||
+                m.fromUser,
+          )
+          .map(
+            (m) => {'role': m.fromUser ? 'user' : 'assistant', 'content': m.text},
+          ),
+      {'role': 'user', 'content': text},
+    ];
+
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: cloudBaseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 60),
+        headers: {
+          'Authorization': 'Bearer $cloudApiKey',
+          'Content-Type': 'application/json',
+        },
+      ),
+    );
+
+    _cloudChatStreamSub?.cancel();
+    _cloudChatStreamSub = dio
+        .postStream(
+          '/v1/chat/completions',
+          data: {
+            'model': selectedModel,
+            'messages': history,
+            'stream': true,
+          },
+        )
+        .listen(
+          (response) {
+            if (mounted) {
+              try {
+                final chunk = response.data['choices']?[0]['delta']['content'];
+                if (chunk != null && chunk.isNotEmpty) {
+                  _stopTypingAnimation();
+                  if (messages.isNotEmpty && !messages.last.fromUser) {
+                    setState(
+                      () => messages.last = messages.last.copyWith(
+                        text:
+                            messages.last.text == '.' ||
+                                    messages.last.text == '..' ||
+                                    messages.last.text == '...'
+                                ? chunk
+                                : messages.last.text + chunk,
+                      ),
+                    );
+                  } else {
+                    setState(
+                      () => messages.add(ChatMessage(text: chunk, fromUser: false)),
+                    );
+                  }
+                }
+              } catch (e) {
+                _stopTypingAnimation();
+                setState(() => chatInputEnabled = true);
+              }
+            }
+          },
+          onDone: () {
+            if (mounted) {
+              _stopTypingAnimation();
+              setState(() {
+                chatInputEnabled = true;
+              });
+            }
+          },
+          onError: (err) {
+            if (mounted) {
+              _stopTypingAnimation();
+              setState(() => chatInputEnabled = true);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('${AppLocalizations.of(context)!.failedToSendMessage}: $err')),
+              );
+            }
+          },
+        );
   }
 
   @override
@@ -348,11 +639,55 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
           controller: _tabController,
           tabs: [
             Tab(text: localizations.models),
+            if (currentProvider == AIProvider.cloud)
+              Tab(text: localizations.cloudSettings)
+            else
+              Tab(text: localizations.chat),
             Tab(text: localizations.chat),
           ],
         ),
         actions: [
-          if (_tabController?.index == 1)
+          PopupMenuButton<AIProvider>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: _switchProvider,
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: AIProvider.local,
+                child: Row(
+                  children: [
+                    Icon(
+                      currentProvider == AIProvider.local
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      color: currentProvider == AIProvider.local
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(localizations.localProvider),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: AIProvider.cloud,
+                child: Row(
+                  children: [
+                    Icon(
+                      currentProvider == AIProvider.cloud
+                          ? Icons.radio_button_checked
+                          : Icons.radio_button_unchecked,
+                      color: currentProvider == AIProvider.cloud
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(localizations.cloudProvider),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (_tabController?.index == 2)
             IconButton(
               icon: const Icon(Icons.settings),
               tooltip: localizations.systemMessage,
@@ -360,33 +695,31 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
                 final controller = TextEditingController(text: systemMessage);
                 final result = await showDialog<String>(
                   context: context,
-                  builder:
-                      (context) => AlertDialog(
-                        title: Text(localizations.setSystemMessage),
-                        content: TextField(
-                          controller: controller,
-                          minLines: 2,
-                          maxLines: 5,
-                          decoration: InputDecoration(
-                            border: OutlineInputBorder(),
-                            labelText: localizations.systemMessage,
-                          ),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: Text(localizations.cancel),
-                          ),
-                          ElevatedButton(
-                            onPressed:
-                                () => Navigator.pop(
-                                  context,
-                                  controller.text.trim(),
-                                ),
-                            child: Text(localizations.save),
-                          ),
-                        ],
+                  builder: (context) => AlertDialog(
+                    title: Text(localizations.setSystemMessage),
+                    content: TextField(
+                      controller: controller,
+                      minLines: 2,
+                      maxLines: 5,
+                      decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        labelText: localizations.systemMessage,
                       ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(localizations.cancel),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(
+                          context,
+                          controller.text.trim(),
+                        ),
+                        child: Text(localizations.save),
+                      ),
+                    ],
+                  ),
                 );
                 if (result != null && result.isNotEmpty) {
                   setState(() => systemMessage = result);
@@ -397,12 +730,19 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [_buildModelsTab(), _buildChatTab()],
+        children: [
+          if (currentProvider == AIProvider.local)
+            _buildLocalModelsTab()
+          else
+            _buildCloudModelsTab(),
+          if (currentProvider == AIProvider.cloud) _buildCloudSettingsTab(),
+          _buildChatTab(),
+        ],
       ),
     );
   }
 
-  Widget _buildModelsTab() {
+  Widget _buildLocalModelsTab() {
     final hasLocalModels = localModels.isNotEmpty;
     final localizations = AppLocalizations.of(context)!;
     return SafeArea(
@@ -450,7 +790,8 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
                               selected: selected,
                               onTap: () {
                                 setState(() => selectedModel = m);
-                                _tabController!.animateTo(1);
+                                _tabController!.animateTo(2);
+                                _saveSettings();
                               },
                             ),
                           );
@@ -487,46 +828,42 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
                                   ],
                                 ],
                               ),
-                              trailing:
-                                  pulling && selectedModel == model
-                                      ? SizedBox(
-                                        width: 200,
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              child: LinearProgressIndicator(
-                                                value:
-                                                    pullProgress > 0
-                                                        ? pullProgress
-                                                        : null,
+                              trailing: pulling && selectedModel == model
+                                  ? SizedBox(
+                                      width: 200,
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: LinearProgressIndicator(
+                                              value: pullProgress > 0
+                                                  ? pullProgress
+                                                  : null,
+                                            ),
+                                          ),
+                                          if (pullStatusText != null) ...[
+                                            const SizedBox(width: 8),
+                                            Flexible(
+                                              child: Text(
+                                                pullStatusText!,
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
                                               ),
                                             ),
-                                            if (pullStatusText != null) ...[
-                                              const SizedBox(width: 8),
-                                              Flexible(
-                                                child: Text(
-                                                  pullStatusText!,
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                  ),
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
                                           ],
-                                        ),
-                                      )
-                                      : IconButton(
-                                        icon: const Icon(Icons.download),
-                                        onPressed:
-                                            pulling
-                                                ? null
-                                                : () async {
-                                                  selectedModel = model;
-                                                  await _pullModel(model);
-                                                },
+                                        ],
                                       ),
+                                    )
+                                  : IconButton(
+                                      icon: const Icon(Icons.download),
+                                      onPressed: pulling
+                                          ? null
+                                          : () async {
+                                            selectedModel = model;
+                                            await _pullModel(model);
+                                          },
+                                    ),
                             ),
                           );
                         },
@@ -534,7 +871,7 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'OR\nProvide a model from https://ollama.com/library',
+                      '${AppLocalizations.of(context)!.or}\n${AppLocalizations.of(context)!.provideModelFrom} https://ollama.com/library',
                       style: Theme.of(context).textTheme.bodyMedium,
                       textAlign: TextAlign.center,
                     ),
@@ -545,7 +882,7 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
                           child: TextField(
                             decoration: InputDecoration(
                               labelText: localizations.enterModelName,
-                              border: OutlineInputBorder(),
+                              border: const OutlineInputBorder(),
                             ),
                             onChanged: (value) {
                               selectedModel = value.trim();
@@ -592,22 +929,21 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
                                     caseSensitive: false,
                                   ).firstMatch(sizeStr);
                                   if (gbMatch != null) {
-                                    sizeGB =
-                                        double.tryParse(
+                                    sizeGB = double.tryParse(
                                           gbMatch.group(1) ?? '0',
                                         ) ??
                                         0;
                                   } else if (mbMatch != null) {
-                                    sizeGB =
-                                        (double.tryParse(
-                                              mbMatch.group(1) ?? '0',
-                                            ) ??
-                                            0) /
+                                    sizeGB = (double.tryParse(
+                                          mbMatch.group(1) ?? '0',
+                                        ) ??
+                                        0) /
                                         1024.0;
                                   }
                                   final ramBytes =
                                       await DeviceInfo.getTotalRAM();
-                                  final ramGB = ramBytes / (1024 * 1024 * 1024);
+                                  final ramGB =
+                                      ramBytes / (1024 * 1024 * 1024);
                                   if (sizeGB > 0 &&
                                       ramGB > 0 &&
                                       sizeGB > ramGB * 0.75) {
@@ -616,41 +952,28 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
                                       pulling = false;
                                     });
                                     if (!context.mounted) return;
-                                    proceed =
-                                        await showDialog<bool>(
+                                    proceed = await showDialog<bool>(
                                           context: context,
-                                          builder:
-                                              (context) => AlertDialog(
-                                                title: Text(
-                                                  localizations
-                                                      .largeModelWarning,
-                                                ),
-                                                content: Text(
-                                                  'The model you are trying to download ($sizeStr) exceeds 75% of your device RAM (${ramGB.toStringAsFixed(2)} GB). This may cause issues or not run at all. Do you want to continue?',
-                                                ),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed:
-                                                        () => Navigator.pop(
-                                                          context,
-                                                          false,
-                                                        ),
-                                                    child: Text(
-                                                      localizations.cancel,
-                                                    ),
-                                                  ),
-                                                  ElevatedButton(
-                                                    onPressed:
-                                                        () => Navigator.pop(
-                                                          context,
-                                                          true,
-                                                        ),
-                                                    child: Text(
-                                                      localizations.proceed,
-                                                    ),
-                                                  ),
-                                                ],
+                                          builder: (context) => AlertDialog(
+                                            title: Text(
+                                              localizations.largeModelWarning,
+                                            ),
+                                            content: Text(
+                                              '${AppLocalizations.of(context)!.modelSizeWarning} $sizeStr (${ramGB.toStringAsFixed(2)} GB RAM). ${AppLocalizations.of(context)!.mayCauseIssues}',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(context, false),
+                                                child: Text(localizations.cancel),
                                               ),
+                                              ElevatedButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(context, true),
+                                                child: Text(localizations.proceed),
+                                              ),
+                                            ],
+                                          ),
                                         ) ??
                                         false;
                                   } else {
@@ -678,29 +1001,28 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
                         ),
                         const SizedBox(width: 8),
                         Builder(
-                          builder:
-                              (context) => IconButton(
-                                icon: const Icon(Icons.open_in_new),
-                                tooltip: localizations.openOllamaLibrary,
-                                onPressed: () async {
-                                  final url = Uri.parse(
-                                    'https://ollama.com/library/${selectedModel ?? ''}',
-                                  );
-                                  if (await canLaunchUrl(url)) {
-                                    await launchUrl(
-                                      url,
-                                      mode: LaunchMode.externalApplication,
-                                    );
-                                  } else {
-                                    if (!context.mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Could not launch URL'),
-                                      ),
-                                    );
-                                  }
-                                },
-                              ),
+                          builder: (context) => IconButton(
+                            icon: const Icon(Icons.open_in_new),
+                            tooltip: localizations.openOllamaLibrary,
+                            onPressed: () async {
+                              final url = Uri.parse(
+                                'https://ollama.com/library/${selectedModel ?? ''}',
+                              );
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(
+                                  url,
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              } else {
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Could not launch URL'),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
                         ),
                       ],
                     ),
@@ -753,6 +1075,184 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
     );
   }
 
+  Widget _buildCloudModelsTab() {
+    final localizations = AppLocalizations.of(context)!;
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (isLoadingCloudModels)
+              const Center(child: CircularProgressIndicator())
+            else if (cloudModelsError != null)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        color: Theme.of(context).colorScheme.error,
+                        size: 48,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        cloudModelsError!,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _fetchCloudModels,
+                        child: Text(localizations.retry),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (cloudModels.isEmpty)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.cloud_off,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                        size: 48,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        localizations.noModelsAvailable,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        localizations.checkConnectionOrSettings,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.builder(
+                  itemCount: cloudModels.length,
+                  itemBuilder: (_, i) {
+                    final model = cloudModels[i];
+                    final selected = model == selectedModel;
+                    return Card(
+                      color: selected ? Colors.blue[50] : null,
+                      child: ListTile(
+                        title: Text(model),
+                        trailing: selected
+                            ? const Icon(
+                                Icons.check_circle,
+                                color: Colors.blue,
+                              )
+                            : null,
+                        selected: selected,
+                        onTap: () {
+                          setState(() => selectedModel = model);
+                          _tabController!.animateTo(2);
+                          _saveSettings();
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCloudSettingsTab() {
+    final localizations = AppLocalizations.of(context)!;
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      localizations.cloudSettings,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      decoration: InputDecoration(
+                        labelText: localizations.baseUrl,
+                        hintText: 'https://api.example.com',
+                        border: const OutlineInputBorder(),
+                      ),
+                      controller: TextEditingController(text: cloudBaseUrl),
+                      onChanged: (value) {
+                        cloudBaseUrl = value.trim();
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      decoration: InputDecoration(
+                        labelText: localizations.apiKey,
+                        hintText: 'sk-...',
+                        border: const OutlineInputBorder(),
+                      ),
+                      obscureText: true,
+                      controller: TextEditingController(text: cloudApiKey),
+                      onChanged: (value) {
+                        cloudApiKey = value.trim();
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _testCloudConnection,
+                            child: Text(localizations.testConnection),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _saveCloudSettings,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.primary,
+                            ),
+                            child: Text(localizations.saveSettings),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (isLoadingCloudModels)
+              const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildChatTab() {
     final modelSelected = selectedModel != null;
     final localizations = AppLocalizations.of(context)!;
@@ -763,7 +1263,9 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
             Expanded(
               child: Center(
                 child: Text(
-                  localizations.selectOrDownloadModel,
+                  currentProvider == AIProvider.local
+                      ? localizations.selectOrDownloadModel
+                      : localizations.selectModel,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
@@ -781,35 +1283,32 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
                       chatInputEnabled;
                   final brightness = Theme.of(context).brightness;
                   return Align(
-                    alignment:
-                        m.fromUser
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
+                    alignment: m.fromUser
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
                     child: Container(
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color:
-                            m.fromUser
-                                ? brightness == Brightness.dark
-                                    ? Colors.blue[900]
-                                    : Colors.blue[200]
-                                : brightness == Brightness.dark
+                        color: m.fromUser
+                            ? brightness == Brightness.dark
+                                ? Colors.blue[900]
+                                : Colors.blue[200]
+                            : brightness == Brightness.dark
                                 ? Colors.grey[800]
                                 : Colors.grey[200],
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child:
-                          m.fromUser
-                              ? Text(m.text)
-                              : (isLastAssistant
-                                  ? SelectionArea(
-                                    child: GptMarkdown(
-                                      m.text,
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
-                                  )
-                                  : SelectableText(m.text)),
+                      child: m.fromUser
+                          ? Text(m.text)
+                          : (isLastAssistant
+                              ? SelectionArea(
+                                  child: GptMarkdown(
+                                    m.text,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                )
+                              : SelectableText(m.text)),
                     ),
                   );
                 },
@@ -824,10 +1323,9 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
                     controller: _inputController,
                     enabled: modelSelected && chatInputEnabled,
                     decoration: InputDecoration(
-                      hintText:
-                          modelSelected
-                              ? localizations.typeMessage
-                              : localizations.selectAModel,
+                      hintText: modelSelected
+                          ? localizations.typeMessage
+                          : localizations.selectAModel,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -846,6 +1344,7 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
                   ElevatedButton(
                     onPressed: () {
                       _chatStreamSub?.cancel();
+                      _cloudChatStreamSub?.cancel();
                       setState(() => chatInputEnabled = true);
                     },
                     style: ElevatedButton.styleFrom(
@@ -857,8 +1356,9 @@ class OllamaChatScreenState extends State<OllamaChatScreen>
                   )
                 else
                   ElevatedButton(
-                    onPressed:
-                        modelSelected && chatInputEnabled ? _sendMessage : null,
+                    onPressed: modelSelected && chatInputEnabled
+                        ? _sendMessage
+                        : null,
                     style: ElevatedButton.styleFrom(
                       shape: const CircleBorder(),
                       padding: const EdgeInsets.all(12),
